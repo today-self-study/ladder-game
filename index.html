@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>사다리 게임 (Ladder Game)</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #f7f7f7; margin: 0; padding: 0; }
+    .container { max-width: 420px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px #0001; padding: 32px 24px; }
+    h1 { text-align: center; color: #2d6cdf; }
+    label, input, button, select { font-size: 1rem; }
+    .input-group { margin-bottom: 18px; }
+    .input-group label { display: block; margin-bottom: 6px; }
+    .input-group input, .input-group select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd; }
+    button { background: #2d6cdf; color: #fff; border: none; border-radius: 6px; padding: 10px 0; width: 100%; cursor: pointer; font-weight: bold; margin-top: 10px; }
+    button:disabled { background: #aaa; }
+    .ladder-canvas { display: block; margin: 24px auto; background: #f0f4fa; border-radius: 8px; box-shadow: 0 1px 4px #0001; }
+    .result-list { margin-top: 24px; }
+    .result-list li { margin-bottom: 8px; }
+    @media (max-width: 500px) {
+      .container { padding: 18px 4px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>사다리 게임</h1>
+    <form id="setup-form">
+      <div class="input-group">
+        <label for="numPlayers">인원 수 (2~8명):</label>
+        <select id="numPlayers" required>
+          <option value="2">2명</option>
+          <option value="3">3명</option>
+          <option value="4">4명</option>
+          <option value="5">5명</option>
+          <option value="6">6명</option>
+          <option value="7">7명</option>
+          <option value="8">8명</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="names">참가자 이름 (쉼표로 구분):</label>
+        <input id="names" type="text" placeholder="예: 철수,영희,민수" required />
+      </div>
+      <div class="input-group">
+        <label for="results">결과 항목 (쉼표로 구분):</label>
+        <input id="results" type="text" placeholder="예: 아이스크림,커피,꽝" required />
+      </div>
+      <button type="submit">사다리 생성</button>
+    </form>
+    <canvas id="ladder" width="360" height="320" class="ladder-canvas" style="display:none;"></canvas>
+    <ul class="result-list" id="resultList"></ul>
+    <button id="resetBtn" style="display:none;">다시하기</button>
+  </div>
+  <script>
+    const form = document.getElementById('setup-form');
+    const ladderCanvas = document.getElementById('ladder');
+    const ctx = ladderCanvas.getContext('2d');
+    const resultList = document.getElementById('resultList');
+    const resetBtn = document.getElementById('resetBtn');
+    let players = [], results = [], ladder = [];
+
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      const num = +document.getElementById('numPlayers').value;
+      players = document.getElementById('names').value.split(',').map(s => s.trim()).filter(Boolean);
+      results = document.getElementById('results').value.split(',').map(s => s.trim()).filter(Boolean);
+      if (players.length !== num || results.length !== num) {
+        alert('참가자와 결과 항목의 수가 인원수와 같아야 합니다.');
+        return;
+      }
+      generateLadder(num);
+      drawLadder(num);
+      showResults(num);
+      ladderCanvas.style.display = 'block';
+      resetBtn.style.display = 'block';
+      form.style.display = 'none';
+    };
+
+    resetBtn.onclick = function() {
+      form.reset();
+      form.style.display = 'block';
+      ladderCanvas.style.display = 'none';
+      resultList.innerHTML = '';
+      resetBtn.style.display = 'none';
+    };
+
+    function generateLadder(n) {
+      // 사다리 구조: 세로줄 n개, 가로줄 랜덤
+      ladder = Array.from({length: n-1}, () => []);
+      for (let y = 0; y < 12; y++) {
+        for (let x = 0; x < n-1; x++) {
+          if (Math.random() < 0.35 &&
+              (!ladder[x][y-1]) && // 연속 가로줄 방지
+              (!ladder[x-1] || !ladder[x-1][y])) {
+            ladder[x][y] = true;
+          } else {
+            ladder[x][y] = false;
+          }
+        }
+      }
+    }
+
+    function drawLadder(n) {
+      ctx.clearRect(0, 0, ladderCanvas.width, ladderCanvas.height);
+      const w = ladderCanvas.width, h = ladderCanvas.height;
+      const margin = 32, top = 40, bottom = h - 40;
+      const colGap = (w - margin*2) / (n-1);
+      // 세로줄
+      for (let i = 0; i < n; i++) {
+        ctx.beginPath();
+        ctx.moveTo(margin + i*colGap, top);
+        ctx.lineTo(margin + i*colGap, bottom);
+        ctx.strokeStyle = '#2d6cdf';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        // 이름
+        ctx.font = 'bold 15px sans-serif';
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.fillText(players[i], margin + i*colGap, top-12);
+        // 결과
+        ctx.font = '13px sans-serif';
+        ctx.fillStyle = '#666';
+        ctx.fillText(results[i], margin + i*colGap, bottom+18);
+      }
+      // 가로줄
+      for (let y = 0; y < 12; y++) {
+        for (let x = 0; x < n-1; x++) {
+          if (ladder[x][y]) {
+            const yPos = top + ((bottom-top)/12)*y + ((bottom-top)/24);
+            ctx.beginPath();
+            ctx.moveTo(margin + x*colGap, yPos);
+            ctx.lineTo(margin + (x+1)*colGap, yPos);
+            ctx.strokeStyle = '#aaa';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    function showResults(n) {
+      // 사다리 타기 결과 계산
+      let mapping = [];
+      for (let i = 0; i < n; i++) {
+        let pos = i;
+        for (let y = 0; y < 12; y++) {
+          if (pos < n-1 && ladder[pos][y]) pos++;
+          else if (pos > 0 && ladder[pos-1][y]) pos--;
+        }
+        mapping[i] = pos;
+      }
+      resultList.innerHTML = '';
+      for (let i = 0; i < n; i++) {
+        const li = document.createElement('li');
+        li.textContent = `${players[i]} → ${results[mapping[i]]}`;
+        resultList.appendChild(li);
+      }
+    }
+  </script>
+</body>
+</html>
