@@ -191,19 +191,29 @@
     }
 
     function getPath(n, idx) {
-      // 사다리 경로 좌표 배열 반환 (drawLadder와 동일한 좌표계 사용)
+      // 사다리 경로 좌표 배열 반환 (수직→수평→수직 꺾임)
       const w = ladderCanvas.width, h = ladderCanvas.height;
       const margin = 32, top = 40, bottom = h - 40;
       const colGap = (w - margin*2) / (n-1);
       let x = idx;
-      let path = [{x, y: top}];
+      let path = [];
+      let yStart = top;
       for (let step = 0; step < 12; step++) {
-        let yPos = top + ((bottom-top)/12)*step + ((bottom-top)/24);
-        if (x < n-1 && ladder[x][step]) x++;
-        else if (x > 0 && ladder[x-1][step]) x--;
-        path.push({x, y: yPos});
+        let yEnd = top + ((bottom-top)/12)*(step+1);
+        // 수직선 끝까지
+        path.push({x, y: yStart}, {x, y: yEnd});
+        yStart = yEnd;
+        // 가로줄이 있으면 수평 이동
+        if (x < n-1 && ladder[x][step]) {
+          path.push({x, y: yEnd}, {x: x+1, y: yEnd});
+          x++;
+        } else if (x > 0 && ladder[x-1][step]) {
+          path.push({x, y: yEnd}, {x: x-1, y: yEnd});
+          x--;
+        }
       }
-      path.push({x, y: bottom});
+      // 마지막 수직선
+      path.push({x, y: yStart}, {x, y: bottom});
       return path;
     }
 
@@ -212,11 +222,51 @@
       const n = players.length;
       const path = getPath(n, idx);
       let i = 0;
+      let progress = 0;
+      const speed = 7; // 픽셀 단위 속도
       function step() {
-        drawLadder(n, path.slice(0, i+1));
+        drawLadder(n, []);
+        // 현재까지의 경로 그리기
+        ctx.save();
+        ctx.strokeStyle = '#ff9800';
+        ctx.lineWidth = 7;
+        ctx.shadowColor = '#ffeb3b';
+        ctx.shadowBlur = 16;
+        ctx.beginPath();
+        if (path.length > 0) {
+          ctx.moveTo(margin + path[0].x * colGap, path[0].y);
+        }
+        for (let j = 1; j < i; j += 2) {
+          ctx.lineTo(margin + path[j].x * colGap, path[j].y);
+        }
+        // 현재 진행 중인 선분
         if (i < path.length-1) {
-          i++;
-          setTimeout(step, 64); // 속도 2배 느리게
+          const p0 = path[i], p1 = path[i+1];
+          const dx = (p1.x - p0.x) * colGap;
+          const dy = p1.y - p0.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          const t = Math.min(progress / dist, 1);
+          ctx.lineTo(
+            margin + p0.x * colGap + dx * t,
+            p0.y + dy * t
+          );
+        }
+        ctx.stroke();
+        ctx.restore();
+        // 다음 프레임 계산
+        if (i < path.length-1) {
+          const p0 = path[i], p1 = path[i+1];
+          const dx = (p1.x - p0.x) * colGap;
+          const dy = p1.y - p0.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          progress += speed;
+          if (progress < dist) {
+            setTimeout(step, 83); // 30% 느리게
+          } else {
+            i += 2;
+            progress = 0;
+            setTimeout(step, 83);
+          }
         } else {
           animating = false;
           // 결과 표시
