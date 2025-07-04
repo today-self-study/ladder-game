@@ -155,16 +155,16 @@
         ctx.fillText(results[i] || '', margin + i*colGap, bottom + 28);
       }
       // 경로 하이라이트
-      if (highlightPath) {
+      if (highlightPath && highlightPath.length > 1) {
         ctx.save();
         ctx.strokeStyle = '#ff9800';
         ctx.lineWidth = 7;
         ctx.shadowColor = '#ffeb3b';
         ctx.shadowBlur = 16;
         ctx.beginPath();
-        ctx.moveTo(margin + highlightPath[0].x*colGap, highlightPath[0].y);
+        ctx.moveTo(margin + highlightPath[0].x * colGap, highlightPath[0].y);
         for (let i = 1; i < highlightPath.length; i++) {
-          ctx.lineTo(margin + highlightPath[i].x*colGap, highlightPath[i].y);
+          ctx.lineTo(margin + highlightPath[i].x * colGap, highlightPath[i].y);
         }
         ctx.stroke();
         ctx.restore();
@@ -225,19 +225,13 @@
       let progress = 0;
       const speed = 7; // 픽셀 단위 속도
       function step() {
-        drawLadder(n, []);
-        // 현재까지의 경로 그리기
-        ctx.save();
-        ctx.strokeStyle = '#ff9800';
-        ctx.lineWidth = 7;
-        ctx.shadowColor = '#ffeb3b';
-        ctx.shadowBlur = 16;
-        ctx.beginPath();
+        // 현재까지의 경로 계산
+        let highlightPath = [];
         if (path.length > 0) {
-          ctx.moveTo(margin + path[0].x * colGap, path[0].y);
+          highlightPath.push({x: path[0].x, y: path[0].y});
         }
         for (let j = 1; j < i; j += 2) {
-          ctx.lineTo(margin + path[j].x * colGap, path[j].y);
+          highlightPath.push({x: path[j].x, y: path[j].y});
         }
         // 현재 진행 중인 선분
         if (i < path.length-1) {
@@ -246,13 +240,12 @@
           const dy = p1.y - p0.y;
           const dist = Math.sqrt(dx*dx + dy*dy);
           const t = Math.min(progress / dist, 1);
-          ctx.lineTo(
-            margin + p0.x * colGap + dx * t,
-            p0.y + dy * t
-          );
+          highlightPath.push({
+            x: p0.x + (p1.x - p0.x) * t,
+            y: p0.y + (p1.y - p0.y) * t
+          });
         }
-        ctx.stroke();
-        ctx.restore();
+        drawLadder(n, highlightPath);
         // 다음 프레임 계산
         if (i < path.length-1) {
           const p0 = path[i], p1 = path[i+1];
