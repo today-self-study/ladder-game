@@ -129,7 +129,7 @@
         ctx.beginPath();
         ctx.moveTo(margin + i*colGap, top);
         ctx.lineTo(margin + i*colGap, bottom);
-        ctx.strokeStyle = '#2d6cdf'; // 색상 통일
+        ctx.strokeStyle = '#2d6cdf';
         ctx.lineWidth = 3;
         ctx.stroke();
       }
@@ -141,11 +141,18 @@
             ctx.beginPath();
             ctx.moveTo(margin + x*colGap, yPos);
             ctx.lineTo(margin + (x+1)*colGap, yPos);
-            ctx.strokeStyle = '#2d6cdf'; // 색상 통일
+            ctx.strokeStyle = '#2d6cdf';
             ctx.lineWidth = 4;
             ctx.stroke();
           }
         }
+      }
+      // 결과 항목 하단 표시
+      ctx.font = 'bold 15px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#666';
+      for (let i = 0; i < n; i++) {
+        ctx.fillText(results[i] || '', margin + i*colGap, bottom + 28);
       }
       // 경로 하이라이트
       if (highlightPath) {
@@ -155,7 +162,7 @@
         ctx.shadowColor = '#ffeb3b';
         ctx.shadowBlur = 16;
         ctx.beginPath();
-        ctx.moveTo(margin + highlightPath[0].x*colGap, top);
+        ctx.moveTo(margin + highlightPath[0].x*colGap, highlightPath[0].y);
         for (let i = 1; i < highlightPath.length; i++) {
           ctx.lineTo(margin + highlightPath[i].x*colGap, highlightPath[i].y);
         }
@@ -184,11 +191,11 @@
     }
 
     function getPath(n, idx) {
-      // 사다리 경로 좌표 배열 반환
+      // 사다리 경로 좌표 배열 반환 (drawLadder와 동일한 좌표계 사용)
       const w = ladderCanvas.width, h = ladderCanvas.height;
       const margin = 32, top = 40, bottom = h - 40;
       const colGap = (w - margin*2) / (n-1);
-      let x = idx, y = 0;
+      let x = idx;
       let path = [{x, y: top}];
       for (let step = 0; step < 12; step++) {
         let yPos = top + ((bottom-top)/12)*step + ((bottom-top)/24);
@@ -209,7 +216,7 @@
         drawLadder(n, path.slice(0, i+1));
         if (i < path.length-1) {
           i++;
-          setTimeout(step, 32);
+          setTimeout(step, 64); // 속도 2배 느리게
         } else {
           animating = false;
           // 결과 표시
