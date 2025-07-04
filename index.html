@@ -225,12 +225,13 @@
       let progress = 0;
       const speed = 7; // 픽셀 단위 속도
       function step() {
+        // colGap, margin 등 좌표계 정의
+        const w = ladderCanvas.width, h = ladderCanvas.height;
+        const margin = 32, top = 40, bottom = h - 40;
+        const colGap = (w - margin*2) / (n-1);
         // 현재까지의 경로 계산
         let highlightPath = [];
-        if (path.length > 0) {
-          highlightPath.push({x: path[0].x, y: path[0].y});
-        }
-        for (let j = 1; j < i; j += 2) {
+        for (let j = 0; j < i; j++) {
           highlightPath.push({x: path[j].x, y: path[j].y});
         }
         // 현재 진행 중인 선분
