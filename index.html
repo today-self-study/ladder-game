@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>사다리 게임 (Ladder Game)</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #f7f7f7; margin: 0; padding: 0; }
+    .container { max-width: 420px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px #0001; padding: 32px 24px; }
+    h1 { text-align: center; color: #2d6cdf; }
+    label, input, button, select { font-size: 1rem; }
+    .input-group { margin-bottom: 18px; }
+    .input-group label { display: block; margin-bottom: 6px; }
+    .input-group input, .input-group select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd; }
+    button { background: #2d6cdf; color: #fff; border: none; border-radius: 6px; padding: 10px 0; width: 100%; cursor: pointer; font-weight: bold; margin-top: 10px; }
+    button:disabled { background: #aaa; }
+    .ladder-canvas { display: block; margin: 24px auto; background: #f0f4fa; border-radius: 8px; box-shadow: 0 1px 4px #0001; touch-action: none; }
+    .names-row { display: flex; justify-content: space-between; margin: 0 0 8px 0; }
+    .name-btn { flex: 1; margin: 0 2px; background: #e6eaf3; color: #2d6cdf; border: none; border-radius: 8px; padding: 8px 0; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+    .name-btn:active { background: #2d6cdf; color: #fff; }
+    @media (max-width: 500px) {
+      .container { padding: 18px 4px; }
+      .ladder-canvas { width: 98vw !important; height: 60vw !important; max-width: 100vw; }
+      .names-row { font-size: 0.95rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>사다리 게임</h1>
+    <form id="setup-form">
+      <div class="input-group">
+        <label for="numPlayers">인원 수 (2~8명):</label>
+        <select id="numPlayers" required>
+          <option value="2">2명</option>
+          <option value="3">3명</option>
+          <option value="4">4명</option>
+          <option value="5">5명</option>
+          <option value="6">6명</option>
+          <option value="7">7명</option>
+          <option value="8">8명</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="names">참가자 이름 (쉼표로 구분):</label>
+        <input id="names" type="text" placeholder="예: 철수,영희,민수" required />
+      </div>
+      <div class="input-group">
+        <label for="results">결과 항목 (쉼표로 구분):</label>
+        <input id="results" type="text" placeholder="예: 아이스크림,커피,꽝" required />
+      </div>
+      <button type="submit">사다리 생성</button>
+    </form>
+    <div class="names-row" id="namesRow" style="display:none;"></div>
+    <canvas id="ladder" width="360" height="320" class="ladder-canvas" style="display:none;"></canvas>
+    <button id="resetBtn" style="display:none;">다시하기</button>
+  </div>
+  <script>
+    const form = document.getElementById('setup-form');
+    const ladderCanvas = document.getElementById('ladder');
+    const ctx = ladderCanvas.getContext('2d');
+    const resetBtn = document.getElementById('resetBtn');
+    const namesRow = document.getElementById('namesRow');
+    let players = [], results = [], ladder = [];
+    let animating = false;
+
+    function resizeCanvas() {
+      if (window.innerWidth < 500) {
+        ladderCanvas.width = window.innerWidth * 0.98;
+        ladderCanvas.height = window.innerWidth * 0.6;
+      } else {
+        ladderCanvas.width = 360;
+        ladderCanvas.height = 320;
+      }
+      if (players.length) drawLadder(players.length);
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      const num = +document.getElementById('numPlayers').value;
+      players = document.getElementById('names').value.split(',').map(s => s.trim()).filter(Boolean);
+      results = document.getElementById('results').value.split(',').map(s => s.trim()).filter(Boolean);
+      if (players.length !== num || results.length !== num) {
+        alert('참가자와 결과 항목의 수가 인원수와 같아야 합니다.');
+        return;
+      }
+      generateLadder(num);
+      drawLadder(num);
+      showNames(num);
+      ladderCanvas.style.display = 'block';
+      resetBtn.style.display = 'block';
+      form.style.display = 'none';
+      namesRow.style.display = 'flex';
+      resizeCanvas();
+    };
+
+    resetBtn.onclick = function() {
+      form.reset();
+      form.style.display = 'block';
+      ladderCanvas.style.display = 'none';
+      namesRow.style.display = 'none';
+      resetBtn.style.display = 'none';
+      ctx.clearRect(0, 0, ladderCanvas.width, ladderCanvas.height);
+    };
+
+    function generateLadder(n) {
+      ladder = Array.from({length: n-1}, () => []);
+      for (let y = 0; y < 12; y++) {
+        for (let x = 0; x < n-1; x++) {
+          if (Math.random() < 0.35 &&
+              (!ladder[x][y-1]) &&
+              (!ladder[x-1] || !ladder[x-1][y])) {
+            ladder[x][y] = true;
+          } else {
+            ladder[x][y] = false;
+          }
+        }
+      }
+    }
+
+    function drawLadder(n, highlightPath) {
+      ctx.clearRect(0, 0, ladderCanvas.width, ladderCanvas.height);
+      const w = ladderCanvas.width, h = ladderCanvas.height;
+      const margin = 32, top = 40, bottom = h - 40;
+      const colGap = (w - margin*2) / (n-1);
+      // 세로줄
+      for (let i = 0; i < n; i++) {
+        ctx.beginPath();
+        ctx.moveTo(margin + i*colGap, top);
+        ctx.lineTo(margin + i*colGap, bottom);
+        ctx.strokeStyle = '#2d6cdf'; // 색상 통일
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+      // 가로줄
+      for (let y = 0; y < 12; y++) {
+        for (let x = 0; x < n-1; x++) {
+          if (ladder[x][y]) {
+            const yPos = top + ((bottom-top)/12)*y + ((bottom-top)/24);
+            ctx.beginPath();
+            ctx.moveTo(margin + x*colGap, yPos);
+            ctx.lineTo(margin + (x+1)*colGap, yPos);
+            ctx.strokeStyle = '#2d6cdf'; // 색상 통일
+            ctx.lineWidth = 4;
+            ctx.stroke();
+          }
+        }
+      }
+      // 경로 하이라이트
+      if (highlightPath) {
+        ctx.save();
+        ctx.strokeStyle = '#ff9800';
+        ctx.lineWidth = 7;
+        ctx.shadowColor = '#ffeb3b';
+        ctx.shadowBlur = 16;
+        ctx.beginPath();
+        ctx.moveTo(margin + highlightPath[0].x*colGap, top);
+        for (let i = 1; i < highlightPath.length; i++) {
+          ctx.lineTo(margin + highlightPath[i].x*colGap, highlightPath[i].y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function showNames(n) {
+      namesRow.innerHTML = '';
+      for (let i = 0; i < n; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'name-btn';
+        btn.textContent = players[i];
+        btn.onclick = (e) => {
+          if (animating) return;
+          animatePath(i);
+        };
+        btn.ontouchstart = (e) => {
+          e.preventDefault();
+          if (animating) return;
+          animatePath(i);
+        };
+        namesRow.appendChild(btn);
+      }
+    }
+
+    function getPath(n, idx) {
+      // 사다리 경로 좌표 배열 반환
+      const w = ladderCanvas.width, h = ladderCanvas.height;
+      const margin = 32, top = 40, bottom = h - 40;
+      const colGap = (w - margin*2) / (n-1);
+      let x = idx, y = 0;
+      let path = [{x, y: top}];
+      for (let step = 0; step < 12; step++) {
+        let yPos = top + ((bottom-top)/12)*step + ((bottom-top)/24);
+        if (x < n-1 && ladder[x][step]) x++;
+        else if (x > 0 && ladder[x-1][step]) x--;
+        path.push({x, y: yPos});
+      }
+      path.push({x, y: bottom});
+      return path;
+    }
+
+    function animatePath(idx) {
+      animating = true;
+      const n = players.length;
+      const path = getPath(n, idx);
+      let i = 0;
+      function step() {
+        drawLadder(n, path.slice(0, i+1));
+        if (i < path.length-1) {
+          i++;
+          setTimeout(step, 32);
+        } else {
+          animating = false;
+          // 결과 표시
+          let mapping = [];
+          for (let k = 0; k < n; k++) {
+            let pos = k;
+            for (let y = 0; y < 12; y++) {
+              if (pos < n-1 && ladder[pos][y]) pos++;
+              else if (pos > 0 && ladder[pos-1][y]) pos--;
+            }
+            mapping[k] = pos;
+          }
+          alert(`${players[idx]} → ${results[mapping[idx]]}`);
+        }
+      }
+      step();
+    }
+  </script>
+</body>
+</html> 
