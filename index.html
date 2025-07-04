@@ -191,7 +191,7 @@
     }
 
     function getPath(n, idx) {
-      // 사다리 경로 좌표 배열 반환 (수직→수평→수직 꺾임)
+      // 사다리 경로 좌표 배열 반환 (수직→수평→수직 꺾임, drawLadder와 y좌표 일치)
       const w = ladderCanvas.width, h = ladderCanvas.height;
       const margin = 32, top = 40, bottom = h - 40;
       const colGap = (w - margin*2) / (n-1);
@@ -199,20 +199,22 @@
       let path = [];
       let yStart = top;
       for (let step = 0; step < 12; step++) {
-        let yEnd = top + ((bottom-top)/12)*(step+1);
-        // 수직선 끝까지
-        path.push({x, y: yStart}, {x, y: yEnd});
-        yStart = yEnd;
+        // drawLadder의 가로선과 동일한 yPos 계산
+        let yPos = top + ((bottom-top)/12)*step + ((bottom-top)/24);
+        let yNext = top + ((bottom-top)/12)*(step+1) + ((bottom-top)/24);
+        // 수직선: yStart ~ yPos
+        path.push({x, y: yStart}, {x, y: yPos});
+        yStart = yPos;
         // 가로줄이 있으면 수평 이동
         if (x < n-1 && ladder[x][step]) {
-          path.push({x, y: yEnd}, {x: x+1, y: yEnd});
+          path.push({x, y: yPos}, {x: x+1, y: yPos});
           x++;
         } else if (x > 0 && ladder[x-1][step]) {
-          path.push({x, y: yEnd}, {x: x-1, y: yEnd});
+          path.push({x, y: yPos}, {x: x-1, y: yPos});
           x--;
         }
       }
-      // 마지막 수직선
+      // 마지막 수직선: yStart ~ bottom
       path.push({x, y: yStart}, {x, y: bottom});
       return path;
     }
@@ -255,11 +257,11 @@
           const dist = Math.sqrt(dx*dx + dy*dy);
           progress += speed;
           if (progress < dist) {
-            setTimeout(step, 83); // 30% 느리게
+            setTimeout(step, 55); // 50% 빠르게
           } else {
             i += 2;
             progress = 0;
-            setTimeout(step, 83);
+            setTimeout(step, 55);
           }
         } else {
           animating = false;
