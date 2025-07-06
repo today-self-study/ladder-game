@@ -30,18 +30,6 @@
     <h1>사다리 게임</h1>
     <form id="setup-form">
       <div class="input-group">
-        <label for="numPlayers">인원 수 (2~8명):</label>
-        <select id="numPlayers" required>
-          <option value="2">2명</option>
-          <option value="3">3명</option>
-          <option value="4">4명</option>
-          <option value="5">5명</option>
-          <option value="6">6명</option>
-          <option value="7">7명</option>
-          <option value="8">8명</option>
-        </select>
-      </div>
-      <div class="input-group">
         <label for="names">참가자 이름 (쉼표로 구분):</label>
         <input id="names" type="text" placeholder="예: 철수,영희,민수" required />
       </div>
@@ -78,11 +66,15 @@
 
     form.onsubmit = function(e) {
       e.preventDefault();
-      const num = +document.getElementById('numPlayers').value;
       players = document.getElementById('names').value.split(',').map(s => s.trim()).filter(Boolean);
       results = document.getElementById('results').value.split(',').map(s => s.trim()).filter(Boolean);
-      if (players.length !== num || results.length !== num) {
-        alert('참가자와 결과 항목의 수가 인원수와 같아야 합니다.');
+      const num = players.length;
+      if (num < 2 || num > 8) {
+        alert('참가자 수는 2~8명이어야 합니다.');
+        return;
+      }
+      if (results.length !== num) {
+        alert('결과 항목의 수가 참가자 수와 같아야 합니다.');
         return;
       }
       generateLadder(num);
